@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarea Canvas</title>
+
+
+    <style type="text/css">
+        * {
+            margin: 0px;
+            padding: 0px;
+
+        }
+
+        canvas {
+            display: block;
+            background-color: #fff;
+        }
+
+        body {
+            background-color: #ffffff;
+        }
+    </style>
+
+
+</head>
+
+<body>
+    <img src="mario-fondo.png" style="display: none;" id="fondo">
+
+    <canvas id="canvas" width="800" height="385"></canvas>
+    <div id="score" style="position: absolute; top: 40px; right: 10px; font-size: 20px; color: rgb(0, 0, 0);">Score: 0
+    </div>
+    <div id="time" style="position: absolute; top: 10px; right: 10px; font-size: 20px; color: rgb(0, 0, 0);">Tiempo: 0
+    </div>
+    <div id="instructions"
+        style="position: absolute; top: 100px; left: 800px; font-size: 20px; color: rgb(185, 11, 11);">
+        <p>Usa las teclas W, A, S, D para moverte.</p>
+        <p>Presiona la barra espaciadora para pausar el juego.</p>
+        <p>Ayuda a Mario a recoger 5 monedas y llega a la meta para ganar.</p>
+        <p>Preciona h o H para esconder las instrucciones</p>
+    </div>
+
+    <script>
+
+        var canvas = document.getElementById("canvas");
+        var scoreElement = document.getElementById("score");
+        var timeElement = document.getElementById("time");
+        ctx = canvas.getContext('2d');
+
+        var dir = 0;
+        var w_x = 100, w_y = 70;
+        var speed = 2;
+        let walls = [];
+        let pause = false;
+        let score = 0;
+        let hasWon = false;
+        let tiempo = 0;
+        let showingInstructions = true;
+
+        let image = new Image(20, 20);
+        image.src = "mario.png";
+        let image2 = new Image(20, 20);
+        image2.src = "moneda.png";
+        let audio = new Audio();
+        audio.src = "mario-coin.mp3"
+        let audio2 = new Audio();
+        audio2.src = "pausa-mario64.mp3"
+        let audio3 = new Audio();
+        audio3.src = "mario-vida.mp3"
+        let audio4 = new Audio();
+        audio4.src = "gameover.mp3"
+        let audio5 = new Audio();
+        audio5.src = "winner.mp3"
+        let audioFondo = new Audio();
+        audioFondo.src = "musicafondo.mp3"
+        let wallDesign = new Image();
+        wallDesign.src = "mashrooms.png";
+
+        const maze = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
+            [1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1],
+            [1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1],
+            [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1],
+            [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1],
+            [1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1]
+        ];
+
+        // Tamaño de celda del laberinto
+        const mazeCellSize = canvas.width / maze[0].length;
+
+        // Función para dibujar el laberinto
+        function drawMaze() {
+            for (let row = 0; row < maze.length; row++) {
+                for (let col = 0; col < maze[row].length; col++) {
+                    if (maze[row][col] === 1) {
+                        const wall = new pared(col * mazeCellSize, row * mazeCellSize, mazeCellSize, mazeCellSize, "#0FC8FF", wallDesign);
+                        walls.push(wall);
+
+                    }
+                }
+            }
+        }
+
+        function generateRandomTargetPosition() {
+            let validPositions = [];
+
+            for (let row = 0; row < maze.length; row++) {
+                for (let col = 0; col < maze[row].length; col++) {
+                    if (maze[row][col] === 0) {
+                        validPositions.push({ x: col * mazeCellSize, y: row * mazeCellSize });
+                    }
+                }
+            }
+
+            // Escoge una posición aleatoria dentro de las coordenadas válidas
+            const randomIndex = Math.floor(Math.random() * validPositions.length);
+            return validPositions[randomIndex];
+        }
+
+
+        class pared {
+            constructor(x, y, w, h, c, design) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.c = c;
+                this.design = design;
+            }
+
+            paint(ctx) {
+                if (this.design) {
+                    ctx.drawImage(this.design, this.x, this.y, this.w, this.h);
+                }
+
+            }
+
+            seTocan(target) {
+
+                if (this.x < target.x + target.w &&
+                    this.x + this.w > target.x &&
+                    this.y < target.y + target.h &&
+                    this.y + this.h > target.y) {
+                    return true;
+                }
+                return false;
+
+            }
+
+
+        }
+
+
+        class Rectangulo {
+            constructor(x, y, w, h, c) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.c = c;
+            }
+
+            paint(ctx) {
+                ctx.drawImage(image2, target.x, target.y, 20 * 1.5, 20 * 1.5);
+
+            }
+
+            seTocan(target) {
+
+                if (this.x < target.x + target.w &&
+                    this.x + this.w > target.x &&
+                    this.y < target.y + target.h &&
+                    this.y + this.h > target.y) {
+                    return true;
+                }
+                return false;
+
+            }
+        }
+
+        class Meta {
+            constructor(x, y, w, h, c) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.c = c;
+            }
+
+            paint(ctx) {
+                ctx.fillStyle = this.c;
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+
+            }
+
+            seTocan(target) {
+
+                if (this.x < target.x + target.w &&
+                    this.x + this.w > target.x &&
+                    this.y < target.y + target.h &&
+                    this.y + this.h > target.y) {
+                    return true;
+                }
+                return false;
+
+            }
+        }
+
+        const player = new Rectangulo(20, 19, 16, 16, "black");
+        const target = new Rectangulo(50, 17, 20, 20, "YELLOW", image2);
+        const meta = new Meta(760, 350, 30, 30, "red");
+
+
+        document.addEventListener("keydown", (e) => {
+
+            if (e.key === "h" || e.key === "H") {
+                toggleInstructions();
+            }
+
+
+            switch (e.keyCode) {
+
+                case 87:
+                    if (!pause) dir = e.keyCode;
+
+                    break;
+                case 83:
+                    if (!pause) dir = e.keyCode;
+
+                    break;
+                case 68:
+                    if (!pause) dir = e.keyCode;
+
+                    break;
+                case 65:
+                    if (!pause) dir = e.keyCode;
+
+                    break;
+                case 32:
+                    pause = !pause;
+                    audio2.play();
+                    break;
+
+            }
+            //update();
+
+        })
+
+        function toggleInstructions() {
+            const instructionsElement = document.getElementById("instructions");
+            if (showingInstructions) {
+                instructionsElement.style.display = "none";
+            } else {
+                instructionsElement.style.display = "block";
+            }
+            showingInstructions = !showingInstructions;
+        }
+
+
+        function update(t) {
+            audioFondo.pause();
+            console.log(t / 1000);
+
+            if (!pause) {
+                 audioFondo.play();
+                tiempo += 0.02;
+
+                switch (dir) {
+                    case 87:
+                        player.y -= speed;
+                        if (player.y < -60) { player.y = 1050 }
+                        break;
+                    case 83:
+                        player.y += speed;
+                        if (player.y > 1050) { player.y = 0 }
+                        break;
+                    case 68:
+                        player.x += speed;
+                        if (player.x > 1050) { player.x = 0 }
+                        break;
+                    case 65:
+                        player.x -= speed;
+                        if (player.x < -60) { player.x = 1050 }
+                        break;
+
+                }
+
+                if (player.seTocan(target)) {
+
+                    const newTargetPosition = generateRandomTargetPosition();
+                    target.x = newTargetPosition.x;
+                    target.y = newTargetPosition.y;
+
+                    score += 10;
+                    audio.play();
+
+                    if (score == 100) {
+
+                        audio3.play();
+                    }
+
+                }
+
+
+
+                for (var i = walls.length - 1; i >= 0; i--) {
+
+                    if (player.seTocan(walls[i])) {
+
+                        switch (dir) {
+                            case 87:
+                                player.y += speed;
+                                break;
+                            case 83:
+                                player.y -= speed;
+                                break;
+                            case 68:
+                                player.x -= speed;
+                                break;
+                            case 65:
+                                player.x += speed;
+                                break;
+
+                        }
+                        dir = 0;
+
+                    }
+                }
+            }
+
+            repaint();
+
+            if (!hasWon) {
+                window.requestAnimationFrame(update);
+            }
+        }
+
+        function repaint() {
+            if (!hasWon) {
+                ctx.drawImage(image, player.x, player.y, 16, 16)
+                target.paint(ctx);
+
+                for (var i = walls.length - 1; i >= 0; i--) {
+                    walls[i].paint(ctx);
+                }
+            }
+
+
+
+            if (!pause) {
+                const fondo1 = document.getElementById('fondo');
+                ctx.drawImage(fondo1, 0, 0, 800, 450);
+
+                ctx.clearRect(0, 450, canvas.width, 150);
+
+
+                ctx.font = "30px Verdana";
+                ctx.fillStyle = "black";
+                ctx.fillText("score:" + score, 20, 470);
+
+                ctx.font = "20px Verdana";
+                ctx.fillStyle = "black";
+                scoreElement.textContent = "Score: " + score;
+                timeElement.textContent = "Tiempo: " + Math.floor(tiempo);
+
+                if (tiempo >= 230 && !hasWon || player.seTocan(meta) && score < 50) {
+
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.7)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = "40px Verdana";
+                    ctx.fillStyle = "white";
+                    ctx.fillText("¡Perdiste!", canvas.width / 2 - 80, canvas.height / 2);
+                    hasWon = true;
+                    audioFondo.pause();
+                    audio4.play();
+                }
+
+                if (player.seTocan(meta) && !hasWon) {
+                    meta.x = Math.random() * canvas.width;
+                    meta.y = Math.random() * canvas.height;
+                    ctx.fillStyle = "rgba(245, 247, 110, 0.7)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = "40px Verdana";
+                    ctx.fillStyle = "white";
+                    ctx.fillText("¡Ganaste!", canvas.width / 2 - 80, canvas.height / 2);
+                    hasWon = true;
+                    audioFondo.pause();
+                    audio5.play();
+                }
+
+
+                player.c = random_rgba();
+                meta.paint(ctx)
+                ctx.drawImage(image, player.x, player.y, 15, 15);
+
+                target.paint(ctx)
+                for (var i = walls.length - 1; i >= 0; i--) {
+                    walls[i].paint(ctx)
+                }
+
+            } else {
+
+                ctx.fillStyle = "rgba(249,59,59,0.020   )";
+                ctx.fillRect(0, 0, 800, 600);
+
+                ctx.font = "35px Verdana";
+                ctx.fillStyle = "black";
+                ctx.fillText("P a u s a", 340, 230);
+            }
+        }
+
+
+
+        window.requestAnimationFrame = (function () {
+            return window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                function (callback) {
+                    window.setTimeout(callback, 17);
+                };
+        }());
+
+        window.requestAnimationFrame(update);
+        drawMaze();
+        function random_rgba() {
+            var o = Math.round, r = Math.random, s = 255;
+            return 'rgba(' + o(r() * s) + ',' + o(r() * s) + ',' + o(r() * s) + ')';
+        }
+
+    </script>
+
+</body>
+
+</html>
